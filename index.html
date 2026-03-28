@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta name="description" content="ClimaCore – Real-time climate dashboard showing temperature, humidity, air quality, and dynamic weather classification with animated visuals." />
+  <meta name="keywords" content="weather dashboard, climate monitoring, real-time weather, temperature, humidity, air quality" />
+  <title>ClimaCore – Smart Climate Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="style.css"/>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body class="weather-sunny" id="app-body">
+
+  <!-- Animated Background Particles -->
+  <div class="bg-particles" id="bgParticles"></div>
+
+  <!-- Background Weather Elements -->
+  <div class="weather-bg-elements" id="weatherBgElements"></div>
+
+  <!-- Top Navigation Bar -->
+  <nav class="navbar" id="navbar">
+    <div class="nav-brand">
+      <div class="brand-icon">🌍</div>
+      <span class="brand-name">ClimaCore</span>
+      <span class="brand-tag">Smart Dashboard</span>
+    </div>
+    <div class="nav-center" id="liveClock">
+      <span class="clock-time" id="clockTime">--:--:--</span>
+      <span class="clock-date" id="clockDate">--- --, ----</span>
+    </div>
+    <div class="nav-actions">
+      <div class="unit-toggle">
+        <button class="unit-btn active" id="btnCelsius" onclick="setUnit('C')">°C</button>
+        <button class="unit-btn" id="btnFahrenheit" onclick="setUnit('F')">°F</button>
+      </div>
+      <div class="api-status" id="apiStatus">
+        <span class="status-dot"></span>
+        <span class="status-text">Live</span>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Location Search Bar -->
+  <section class="search-section" id="searchSection">
+    <div class="search-container">
+      <div class="search-box" id="searchBox">
+        <span class="search-icon">🔍</span>
+        <input
+          type="text"
+          id="cityInput"
+          placeholder="Search city, e.g. Mumbai, London, Tokyo..."
+          autocomplete="off"
+          aria-label="Search city"
+        />
+        <button class="search-btn" id="searchBtn" onclick="searchCity()">
+          Search
+        </button>
+        <button class="location-btn" id="locationBtn" onclick="getUserLocation()" title="Use my location">
+          <span>📍</span> My Location
+        </button>
+      </div>
+      <div class="search-suggestions" id="searchSuggestions"></div>
+    </div>
+  </section>
+
+  <!-- Alert Banner -->
+  <div class="alert-banner" id="alertBanner" style="display:none;">
+    <div class="alert-content">
+      <span class="alert-icon" id="alertIcon">⚠️</span>
+      <span class="alert-message" id="alertMessage">Weather Alert</span>
+      <button class="alert-close" onclick="dismissAlert()">✕</button>
+    </div>
+  </div>
+
+  <!-- Main Dashboard -->
+  <main class="dashboard" id="dashboard">
+
+    <!-- Hero Weather Card -->
+    <section class="hero-section">
+      <div class="hero-card" id="heroCard">
+        <div class="hero-left">
+          <div class="location-info">
+            <span class="location-pin">📍</span>
+            <span class="city-name" id="cityName">Loading...</span>
+            <span class="country-name" id="countryName"></span>
+          </div>
+          <div class="weather-classification" id="weatherClassification">
+            <span class="weather-emoji" id="weatherEmoji">⛅</span>
+            <span class="weather-label" id="weatherLabel">Detecting...</span>
+          </div>
+          <div class="hero-temp">
+            <span class="temp-value" id="heroTemp">--</span>
+            <span class="temp-unit" id="heroTempUnit">°C</span>
+          </div>
+          <div class="feels-like">
+            Feels like <span id="feelsLike">--</span>°
+            &nbsp;|&nbsp; <span id="heroDesc">--</span>
+          </div>
+          <div class="hero-extra">
+            <div class="hero-extra-item">
+              <span>🌅</span> Sunrise <span id="sunrise">--:--</span>
+            </div>
+            <div class="hero-extra-item">
+              <span>🌇</span> Sunset <span id="sunset">--:--</span>
+            </div>
+            <div class="hero-extra-item">
+              <span>💨</span> Wind <span id="windSpeed">-- km/h</span>
+            </div>
+          </div>
+        </div>
+        <div class="hero-right">
+          <div class="weather-animation-container" id="weatherAnimation">
+            <!-- Animated SVG will be injected here -->
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Stats Cards Row -->
+    <section class="stats-section">
+      <div class="stats-grid">
+
+        <div class="stat-card" id="cardTemp">
+          <div class="stat-icon">🌡️</div>
+          <div class="stat-body">
+            <div class="stat-label">Temperature</div>
+            <div class="stat-value" id="statTemp">--</div>
+            <div class="stat-unit" id="statTempUnit">°C</div>
+          </div>
+          <div class="stat-bar-wrap">
+            <div class="stat-bar">
+              <div class="stat-bar-fill temp-fill" id="tempBar" style="width:0%"></div>
+            </div>
+            <span class="stat-range">-10° → 50°</span>
+          </div>
+          <div class="stat-badge" id="tempBadge">--</div>
+        </div>
+
+        <div class="stat-card" id="cardHumidity">
+          <div class="stat-icon">💧</div>
+          <div class="stat-body">
+            <div class="stat-label">Humidity</div>
+            <div class="stat-value" id="statHumidity">--</div>
+            <div class="stat-unit">%</div>
+          </div>
+          <div class="stat-bar-wrap">
+            <div class="stat-bar">
+              <div class="stat-bar-fill humidity-fill" id="humidityBar" style="width:0%"></div>
+            </div>
+            <span class="stat-range">0% → 100%</span>
+          </div>
+          <div class="stat-badge" id="humidityBadge">--</div>
+        </div>
+
+        <div class="stat-card" id="cardAQI">
+          <div class="stat-icon">🌬️</div>
+          <div class="stat-body">
+            <div class="stat-label">Air Quality (AQI)</div>
+            <div class="stat-value" id="statAQI">--</div>
+            <div class="stat-unit">AQI</div>
+          </div>
+          <div class="stat-bar-wrap">
+            <div class="stat-bar">
+              <div class="stat-bar-fill aqi-fill" id="aqiBar" style="width:0%"></div>
+            </div>
+            <span class="stat-range">Good → Hazardous</span>
+          </div>
+          <div class="stat-badge" id="aqiBadge">--</div>
+        </div>
+
+        <div class="stat-card" id="cardPressure">
+          <div class="stat-icon">📊</div>
+          <div class="stat-body">
+            <div class="stat-label">Pressure</div>
+            <div class="stat-value" id="statPressure">--</div>
+            <div class="stat-unit">hPa</div>
+          </div>
+          <div class="stat-bar-wrap">
+            <div class="stat-bar">
+              <div class="stat-bar-fill pressure-fill" id="pressureBar" style="width:0%"></div>
+            </div>
+            <span class="stat-range">950 → 1050 hPa</span>
+          </div>
+          <div class="stat-badge" id="pressureBadge">--</div>
+        </div>
+
+        <div class="stat-card" id="cardVisibility">
+          <div class="stat-icon">👁️</div>
+          <div class="stat-body">
+            <div class="stat-label">Visibility</div>
+            <div class="stat-value" id="statVisibility">--</div>
+            <div class="stat-unit">km</div>
+          </div>
+          <div class="stat-bar-wrap">
+            <div class="stat-bar">
+              <div class="stat-bar-fill visibility-fill" id="visibilityBar" style="width:0%"></div>
+            </div>
+            <span class="stat-range">0 → 10 km</span>
+          </div>
+          <div class="stat-badge" id="visibilityBadge">--</div>
+        </div>
+
+        <div class="stat-card" id="cardUV">
+          <div class="stat-icon">☀️</div>
+          <div class="stat-body">
+            <div class="stat-label">UV Index</div>
+            <div class="stat-value" id="statUV">--</div>
+            <div class="stat-unit">/ 11+</div>
+          </div>
+          <div class="stat-bar-wrap">
+            <div class="stat-bar">
+              <div class="stat-bar-fill uv-fill" id="uvBar" style="width:0%"></div>
+            </div>
+            <span class="stat-range">Low → Extreme</span>
+          </div>
+          <div class="stat-badge" id="uvBadge">--</div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- Charts Section -->
+    <section class="charts-section">
+      <div class="charts-grid">
+
+        <div class="chart-card" id="tempChartCard">
+          <div class="chart-header">
+            <h3 class="chart-title">🌡️ Temperature Trend (24h)</h3>
+            <div class="chart-controls">
+              <button class="chart-ctrl-btn active" onclick="switchTempView('24h', this)">24h</button>
+              <button class="chart-ctrl-btn" onclick="switchTempView('week', this)">Week</button>
+            </div>
+          </div>
+          <div class="chart-wrap">
+            <canvas id="temperatureChart"></canvas>
+          </div>
+        </div>
+
+        <div class="chart-card" id="humidityChartCard">
+          <div class="chart-header">
+            <h3 class="chart-title">💧 Humidity & Precipitation</h3>
+            <div class="chart-controls">
+              <button class="chart-ctrl-btn active" onclick="switchHumView('24h', this)">24h</button>
+              <button class="chart-ctrl-btn" onclick="switchHumView('week', this)">Week</button>
+            </div>
+          </div>
+          <div class="chart-wrap">
+            <canvas id="humidityChart"></canvas>
+          </div>
+        </div>
+
+        <div class="chart-card wide-card" id="aqiChartCard">
+          <div class="chart-header">
+            <h3 class="chart-title">🌬️ Air Quality Index Trend</h3>
+          </div>
+          <div class="chart-wrap">
+            <canvas id="aqiChart"></canvas>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- 5-Day Forecast -->
+    <section class="forecast-section">
+      <h2 class="section-title">📅 5-Day Forecast</h2>
+      <div class="forecast-grid" id="forecastGrid">
+        <!-- Forecast cards injected by JS -->
+      </div>
+    </section>
+
+    <!-- Hourly Forecast Strip -->
+    <section class="hourly-section">
+      <h2 class="section-title">🕐 Hourly Outlook</h2>
+      <div class="hourly-strip" id="hourlyStrip">
+        <!-- Hourly items injected by JS -->
+      </div>
+    </section>
+
+    <!-- Wind & Sun Info -->
+    <section class="details-section">
+      <div class="details-grid">
+
+        <div class="detail-card" id="windCard">
+          <h3 class="detail-title">🧭 Wind Details</h3>
+          <div class="compass-container">
+            <div class="compass" id="compass">
+              <div class="compass-needle" id="compassNeedle"></div>
+              <div class="compass-labels">
+                <span class="cl-n">N</span>
+                <span class="cl-e">E</span>
+                <span class="cl-s">S</span>
+                <span class="cl-w">W</span>
+              </div>
+            </div>
+            <div class="wind-stats">
+              <div class="ws-item">
+                <span class="ws-label">Speed</span>
+                <span class="ws-value" id="windSpeedDetail">--</span>
+                <span class="ws-unit">km/h</span>
+              </div>
+              <div class="ws-item">
+                <span class="ws-label">Gust</span>
+                <span class="ws-value" id="windGust">--</span>
+                <span class="ws-unit">km/h</span>
+              </div>
+              <div class="ws-item">
+                <span class="ws-label">Direction</span>
+                <span class="ws-value" id="windDir">--</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="detail-card" id="sunCard">
+          <h3 class="detail-title">☀️ Sun & Moon</h3>
+          <div class="sun-arc-container">
+            <svg class="sun-arc" viewBox="0 0 200 110">
+              <path d="M10 100 Q100 10 190 100" fill="none" stroke="rgba(255,255,255,0.15)" stroke-width="2"/>
+              <path class="sun-path-fill" id="sunPathFill" d="M10 100 Q100 10 190 100" fill="none" stroke="url(#sunGrad)" stroke-width="3" stroke-linecap="round" stroke-dasharray="0 1000"/>
+              <defs>
+                <linearGradient id="sunGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                  <stop offset="0%" stop-color="#f97316"/>
+                  <stop offset="100%" stop-color="#facc15"/>
+                </linearGradient>
+              </defs>
+              <circle class="sun-dot" id="sunDot" cx="10" cy="100" r="8" fill="#facc15"/>
+              <line x1="10" y1="105" x2="190" y2="105" stroke="rgba(255,255,255,0.2)" stroke-width="1"/>
+            </svg>
+            <div class="sun-times">
+              <div class="st-item">
+                <span>🌅</span>
+                <span class="st-label">Sunrise</span>
+                <span class="st-val" id="sunriseDetail">--:--</span>
+              </div>
+              <div class="st-item">
+                <span>🌇</span>
+                <span class="st-label">Sunset</span>
+                <span class="st-val" id="sunsetDetail">--:--</span>
+              </div>
+              <div class="st-item">
+                <span>🌕</span>
+                <span class="st-label">Day Length</span>
+                <span class="st-val" id="dayLength">--h --m</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="detail-card" id="aqiDetailCard">
+          <h3 class="detail-title">🧪 Air Quality Breakdown</h3>
+          <div class="aqi-breakdown" id="aqiBreakdown">
+            <div class="aqi-meter">
+              <div class="aqi-scale">
+                <div class="aqi-seg good">Good</div>
+                <div class="aqi-seg moderate">Moderate</div>
+                <div class="aqi-seg usg">Unhealthy*</div>
+                <div class="aqi-seg unhealthy">Unhealthy</div>
+                <div class="aqi-seg very-unhealthy">V.Unhealthy</div>
+                <div class="aqi-seg hazardous">Hazardous</div>
+              </div>
+              <div class="aqi-pointer-track">
+                <div class="aqi-pointer" id="aqiPointer" style="left:0%"></div>
+              </div>
+            </div>
+            <div class="pollutants-grid" id="pollutantsGrid">
+              <!-- Pollutants injected by JS -->
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <div class="footer-content">
+      <span>ClimaCore &copy; 2026 &mdash; Powered by <strong>OpenWeatherMap API</strong></span>
+      <span class="footer-sep">|</span>
+      <span id="lastUpdated">Last updated: --</span>
+      <span class="footer-sep">|</span>
+      <span class="footer-note">Data refreshes every 10 minutes</span>
+    </div>
+  </footer>
+
+  <!-- Loading Overlay -->
+  <div class="loading-overlay" id="loadingOverlay">
+    <div class="loader-inner">
+      <div class="loader-globe">🌍</div>
+      <div class="loader-ring"></div>
+      <div class="loader-text">Fetching Climate Data...</div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
